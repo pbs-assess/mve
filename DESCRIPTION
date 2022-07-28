@@ -1,0 +1,23 @@
+Package: mve
+Title: Forecast From Multi-View Embedding (MVE) And Empirical Dynamic Modelling (EDM) Methods
+Version: 0.0.1
+Authors@R: 
+    c(person(given = c("Luke", "A."),
+             family = "Rogers",
+             role = c("aut", "cre"),
+             email = "luke.rogers@dfo-mpo.gc.ca",
+             comment = c(ORCID = "0000-0003-3843-064X"))
+    )
+Description: The 'mve' package forecasts from MVE and EDM methods.
+License: GPL (>= 3)
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.2
+Imports: 
+    dplyr,
+    here,
+    magrittr,
+    readr,
+    rlang,
+    tidyr,
+    usethis
