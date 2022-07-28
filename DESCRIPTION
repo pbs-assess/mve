@@ -15,9 +15,8 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.2
 Imports: 
     dplyr,
-    here,
     magrittr,
-    readr,
-    rlang,
-    tidyr,
-    usethis
+    rlang
+Depends: 
+    R (>= 2.10)
+LazyData: true
