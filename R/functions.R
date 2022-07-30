@@ -1,11 +1,18 @@
 #' Multi-View Embedding (MVE)
 #'
-#' @param index [integer()][vector()]
 #' @param data [data.frame()]
+#' @param index [integer()][vector()]
 #' @param response [character()]
 #' @param lags [list()] whose elements are one named vector of integer lags for
 #'   each explanatory variable
-#' @param beyond [logical()]
+#' @param within_row [logical()] forecast response using explanatory values
+#'   from within the same row in \code{data}. This is appropriate if the
+#'   response is indexed by a generating event but occurs at a later time. For
+#'   example sockeye recruitment is indexed by brood year but typically occurs
+#'   over the subsequent 3-5 years, so \code{within_row = TRUE} is appropriate.
+#'   Note that this excludes the response from the state space reconstruction,
+#'   and consequently identifies nearest neighbours by explanatory variables
+#'   and their lags, but not by the resulting recruitment.
 #' @param n_best [integer()]
 #' @param cores [integer()]
 #'
@@ -14,15 +21,16 @@
 #' @return [list()]
 #' @export
 #'
-mve <- function (index,
-                 data,
+mve <- function (data,
+                 index,
                  response,
                  lags,
-                 beyond = FALSE,
+                 within_row = FALSE,
                  n_best = ceiling(sqrt(2^length(unlist(lags)))),
                  cores = 1L) {
 
   # Check arguments ------------------------------------------------------------
+
 
 
   # Create subset lags ---------------------------------------------------------
@@ -35,10 +43,10 @@ mve <- function (index,
     outputs <- parallel::mclapply(
       X = subset_lags,
       FUN = mve::sve,
-      index = index,
       data = data,
+      index = index,
       response = response,
-      beyond = beyond,
+      within_row = within_row,
       superset = lags,
       mc.cores = cores
     )
@@ -46,31 +54,38 @@ mve <- function (index,
     outputs <- lapply(
       X = subset_lags,
       FUN = mve::sve,
-      index = index,
       data = data,
+      index = index,
       response = response,
-      beyond = beyond,
+      within_row = within_row,
       superset = lags
     )
   }
+
   # Average n best forecasts ---------------------------------------------------
 
-  output <- weight_by_past(outputs, n_best)
+  output <- weight_sve_outputs_by_past(outputs, n_best)
 
   # Return output --------------------------------------------------------------
 
   return(output)
 }
 
-
 #' Single-View Embedding (SVE)
 #'
-#' @param index [integer()][vector()]
 #' @param data [data.frame()]
+#' @param index [integer()][vector()]
 #' @param response [character()]
 #' @param lags [list()] whose elements are one named vector of integer lags for
 #'   each explanatory variable
-#' @param beyond [logical()]
+#' @param within_row [logical()] forecast response using explanatory values
+#'   from within the same row in \code{data}. This is appropriate if the
+#'   response is indexed by a generating event but occurs at a later time. For
+#'   example sockeye recruitment is indexed by brood year but typically occurs
+#'   over the subsequent 3-5 years, so \code{within_row = TRUE} is appropriate.
+#'   Note that this excludes the response from the state space reconstruction,
+#'   and consequently identifies nearest neighbours by explanatory variables
+#'   and their lags, but not by the resulting recruitment.
 #' @param superset [list()]
 #'
 #' @author Luke A. Rogers
@@ -78,72 +93,124 @@ mve <- function (index,
 #' @return [list()]
 #' @export
 #'
-sve <- function (index,
-                 data,
+sve <- function (data,
+                 index,
                  response,
                  lags,
-                 beyond = FALSE,
+                 within_row = FALSE,
                  superset = NULL) {
 
   # Check arguments ------------------------------------------------------------
 
-  # Define the state space reconstruction --------------------------------------
 
-  ssr <- state_space_reconstruction(data, response, lags)
 
-  # Compute state space distances between points -------------------------------
-  # TODO: update index and remove buffer
 
-  # - Rows in X are points in the SSR
-  # - Each row in X_distance corresponds to a focal point in the SSR
-  # - Each column in X_distance corresponds to a potential neighbour in the SSR
-  # - Elements of X_distance correspond to distances to neighbours
-  # - NA elements indicate disallowed neighbours for a given focal point
+  # Identify forecast type -----------------------------------------------------
 
-  distances <- state_space_distances(ssr, index, buffer)
+  if (within_row) {
 
-  # Compute centred and scaled forecasts ---------------------------------------
+    # Define the state space reconstruction omitting the response --------------
 
-  # - Create neighbour index matrix
-  # - Create neighbour matrices
-  # - Project neighbour matrices
-  # - Compute X_forecast vector
+    ssr <- state_space_reconstruction(data = data, response = NULL, lags = lags)
 
-  ssr_forecasts <- state_space_forecasts(ssr, distances, beyond)
+    # Compute state space distances between points -----------------------------
 
-  # Define observed ------------------------------------------------------------
+    # - Rows in ssr are points in the SSR
+    # - Each row in distances corresponds to a focal point in the SSR
+    # - Each column in distances corresponds to a potential neighbour in the SSR
+    # - Elements of distances correspond to the distance to a neighbour
+    # - NA elements indicate disallowed neighbours for a given focal point
 
-  observed <- c(dplyr::pull(data, response), NA)[seq_along(ssr_forecasts)]
+    distances <- state_space_distances(ssr, index)
 
-  # Compute forecast -----------------------------------------------------------
+    # Define the observed vector -----------------------------------------------
 
-  forecast <- untransform_forecasts(observed, ssr_forecasts)
+    observed <- dplyr::pull(data, response) # Past values used in forecasts
 
-  # Return results -------------------------------------------------------------
-  # TODO: update index, compute rmse
+    # Compute centred and scaled forecasts -------------------------------------
 
-  rows <- seq_along(forecast)
+    # - Create neighbour index matrix
+    # - Create neighbour matrices
+    # - Project neighbour matrices
+    # - Compute ssr_forecasts vector
 
-  tibble::tibble(
-    set = rep(0:1, c(index - 1, nrow(data) - index + 2))[rows],
-    time = seq_len(nrow(data) + 1L)[rows],
-    points = c(0, as.vector(apply(distances, 1, function (x) sum(!is.na(x)))))[rows],
-    dim = rep(ncol(ssr), nrow(data) + 1L)[rows],
+    ssr_forecasts <- state_space_forecasts(ssr, distances, within_row, observed)
+
+    # Compute forecasts --------------------------------------------------------
+
+    forecasts <- untransform_forecasts(observed, ssr_forecasts)
+
+    # Exit conditional to prepare output ---------------------------------------
+
+  } else {
+
+    # Define the state space reconstruction including the response -------------
+
+    ssr <- state_space_reconstruction(data, response, lags)
+
+    # Compute state space distances between points -----------------------------
+
+    # - Rows in ssr are points in the SSR
+    # - Each row in distances corresponds to a focal point in the SSR
+    # - Each column in distances corresponds to a potential neighbour in the SSR
+    # - Elements of distances correspond to the distance to a neighbour
+    # - NA elements indicate disallowed neighbours for a given focal point
+
+    distances <- state_space_distances(ssr, index)
+
+    # Define the observed vector -----------------------------------------------
+
+    observed <- dplyr::pull(data, response) # Past values used in forecasts
+
+    # Compute centred and scaled forecasts -------------------------------------
+
+    # - Create neighbour index matrix
+    # - Create neighbour matrices
+    # - Project neighbour matrices
+    # - Compute ssr_forecasts vector
+
+    ssr_forecasts <- state_space_forecasts(ssr, distances)
+
+    # Compute forecasts --------------------------------------------------------
+
+    forecasts <- untransform_forecasts(observed, ssr_forecasts)
+
+    # Exit conditional to prepare output ---------------------------------------
+  }
+
+  # Prepare output -------------------------------------------------------------
+
+  output <- tibble::tibble(
+    index = seq_along(observed),
     observed = observed,
-    forecast = forecast,
-    forecast_metrics(observed, forecast, window, metric),
+    forecast = forecasts,
+    points = count_ssr_points(distances),
+    dim = rep(ncol(ssr), nrow(data)),
+    rmse = rmse(observed, forecasts, running = TRUE),
+    mre = mre(observed, forecasts, running = TRUE),
     superset_columns(data, lags, superset)
   )
+
+  # Return output --------------------------------------------------------------
+
+  return(output)
 }
 
 #' Empirical Dynamic Modelling (EDM)
 #'
-#' @param index [integer()][vector()]
 #' @param data [data.frame()]
+#' @param index [integer()][vector()]
 #' @param response [character()]
 #' @param lags [list()] whose elements are one named vector of integer lags for
 #'   each explanatory variable
-#' @param beyond [logical()]
+#' @param within_row [logical()] forecast response using explanatory values
+#'   from within the same row in \code{data}. This is appropriate if the
+#'   response is indexed by a generating event but occurs at a later time. For
+#'   example sockeye recruitment is indexed by brood year but typically occurs
+#'   over the subsequent 3-5 years, so \code{within_row = TRUE} is appropriate.
+#'   Note that this excludes the response from the state space reconstruction,
+#'   and consequently identifies nearest neighbours by explanatory variables
+#'   and their lags, but not by the resulting recruitment.
 #' @param cores [integer()]
 #'
 #' @author Luke A. Rogers
@@ -151,21 +218,20 @@ sve <- function (index,
 #' @return [list()]
 #' @export
 #'
-edm <- function (index,
-                 data,
+edm <- function (data,
+                 index,
                  response,
                  lags,
-                 beyond = FALSE,
+                 within_row = FALSE,
                  cores = 1L) {
 
   # Return forecasts -----------------------------------------------------------
 
-  mve::mve(index = index,
-           data = data,
+  mve::mve(data = data,
+           index = index,
            response = response,
            lags = lags,
-           beyond = beyond,
+           within_row = within_row,
            n_best = 1L,
            cores = cores)
-
 }

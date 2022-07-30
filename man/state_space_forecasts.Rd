@@ -2,24 +2,30 @@
 % Please edit documentation in R/utils.R
 \name{state_space_forecasts}
 \alias{state_space_forecasts}
-\title{Empirical Dynamic Modeling Forecasts}
+\title{State Space Forecasts}
 \usage{
-state_space_forecasts(X, distance, beyond = FALSE)
+state_space_forecasts(ssr, distances, within_row = FALSE, observed = NULL)
 }
 \arguments{
-\item{X}{\code{\link[=matrix]{matrix()}} a state space reconstruction in which the rows
+\item{ssr}{\code{\link[=matrix]{matrix()}} a state space reconstruction in which the rows
 are points in the state space}
 
-\item{distance}{\code{\link[=matrix]{matrix()}} of allowed neighbour distances}
+\item{distances}{\code{\link[=matrix]{matrix()}} of allowed neighbour distances}
 
-\item{beyond}{\code{\link[=logical]{logical()}}}
+\item{within_row}{\code{\link[=logical]{logical()}} forecast response using explanatory values
+from within the same row in \code{data}. This is appropriate if the
+response is indexed by a generating event but occurs at a later time. For
+example sockeye recruitment is indexed by brood year but typically occurs
+over the subsequent 3-5 years, so \code{within_row = TRUE} is appropriate.
+Note that this excludes the response from the state space reconstruction,
+and consequently identifies nearest neighbours by explanatory variables
+and their lags, but not by the resulting recruitment.}
+
+\item{observed}{\link[=vector]{numeric()}}
 }
 \value{
 \code{\link[=numeric]{numeric()}} \code{\link[=vector]{vector()}} of forecast values
 }
 \description{
-Empirical Dynamic Modeling Forecasts
-}
-\author{
-Luke A. Rogers
+State Space Forecasts
 }

@@ -5,26 +5,33 @@
 \title{Multi-View Embedding (MVE)}
 \usage{
 mve(
-  index,
   data,
+  index,
   response,
   lags,
-  beyond = FALSE,
+  within_row = FALSE,
   n_best = ceiling(sqrt(2^length(unlist(lags)))),
   cores = 1L
 )
 }
 \arguments{
-\item{index}{\link[=vector]{integer()}}
-
 \item{data}{\code{\link[=data.frame]{data.frame()}}}
+
+\item{index}{\link[=vector]{integer()}}
 
 \item{response}{\code{\link[=character]{character()}}}
 
 \item{lags}{\code{\link[=list]{list()}} whose elements are one named vector of integer lags for
 each explanatory variable}
 
-\item{beyond}{\code{\link[=logical]{logical()}}}
+\item{within_row}{\code{\link[=logical]{logical()}} forecast response using explanatory values
+from within the same row in \code{data}. This is appropriate if the
+response is indexed by a generating event but occurs at a later time. For
+example sockeye recruitment is indexed by brood year but typically occurs
+over the subsequent 3-5 years, so \code{within_row = TRUE} is appropriate.
+Note that this excludes the response from the state space reconstruction,
+and consequently identifies nearest neighbours by explanatory variables
+and their lags, but not by the resulting recruitment.}
 
 \item{n_best}{\code{\link[=integer]{integer()}}}
 

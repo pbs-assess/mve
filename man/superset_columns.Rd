@@ -4,7 +4,7 @@
 \alias{superset_columns}
 \title{Lag Superset Columns}
 \usage{
-superset_columns(data, lags, superset = NULL, beyond = FALSE)
+superset_columns(data, lags, superset = NULL)
 }
 \arguments{
 \item{data}{\code{\link[=matrix]{matrix()}} or \code{\link[=data.frame]{data.frame()}} with named \code{\link[=numeric]{numeric()}} columns}
@@ -14,8 +14,6 @@ variable.}
 
 \item{superset}{\code{\link[=list]{list()}} superset of lags corresponding to the parent state
 space reconstruction}
-
-\item{beyond}{\code{\link[=logical]{logical()}}}
 }
 \value{
 \code{\link[tibble:tibble]{tibble::tibble()}}
