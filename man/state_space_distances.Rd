@@ -25,13 +25,13 @@ from the focal point to the neighbour point. Disallowed focal point
 and neighbour combinations have value NA.
 }
 \examples{
-d <- data.frame(x = 1:10, y = 11:20)
+d <- data.frame(x = 1:30, y = 31:60)
 ssr <- state_space_reconstruction(
   d,
   response = "x",
   lags = list(y = c(0, 1, 2, 3))
 )
-state_space_distances(ssr, 5:10)
+state_space_distances(ssr, 20:25)
 
 
 }

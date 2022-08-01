@@ -137,13 +137,13 @@ state_space_reconstruction <- function (data, response, lags) {
 #' @export
 #'
 #' @examples
-#' d <- data.frame(x = 1:10, y = 11:20)
+#' d <- data.frame(x = 1:30, y = 31:60)
 #' ssr <- state_space_reconstruction(
 #'   d,
 #'   response = "x",
 #'   lags = list(y = c(0, 1, 2, 3))
 #' )
-#' state_space_distances(ssr, 5:10)
+#' state_space_distances(ssr, 20:25)
 #'
 #'
 state_space_distances <- function (ssr, index) {
@@ -165,18 +165,23 @@ state_space_distances <- function (ssr, index) {
   distances[upper.tri(distances, diag = TRUE)] <- NA_real_
 
   # Exclude points with a missing value ----------------------------------------
+
   # - Neighbours of focal points that themselves contain missing values
   # - Neighbours that contain missing values
   # - Neighbours that project to points that contain missing values
+
   na_rows <- which(is.na(rowSums(ssr)))
   na_proj <- subset(na_rows - 1L, na_rows - 1L > 0)
   distances[na_rows, ] <- NA_real_
   distances[, na_rows] <- NA_real_
   distances[, na_proj] <- NA_real_
 
-  # Exclude focal points in the training set -----------------------------------
+  # Exclude focal points that do not project to points to forecast -------------
 
-  distances[seq_len(min(index) - 2L), ] <- NA_real_
+  # Identify focal points to exclude
+  exclude <- setdiff(seq_len(nrow(ssr)), index - 1L)
+  # Exclude focal points
+  distances[exclude, ] <- NA_real_
 
   # Return the distance matrix -------------------------------------------------
 
