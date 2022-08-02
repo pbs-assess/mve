@@ -1,3 +1,36 @@
+#' Represent An Integer As A Binary Vector
+#'
+#' @param x [integer()] >= 0
+#' @param digits [integer()] length of the output vector
+#'
+#' @return [integer()] [vector()] binary representation of x
+#' @export
+#'
+#' @examples
+#' binary(10, digits = 8)
+#'
+#' for (i in 0:32) print(binary(i, digits = 6))
+#'
+binary <- function (x, digits = NULL) {
+  # Check arguments
+
+  # Compute binary vector
+  v <- c()
+  while (x > 0) {
+    r <- x %% 2
+    x <- x %/% 2
+    v <- c(r, v)
+  }
+  if (!is.null(digits)) {
+    if (digits < length(v)) {
+      stop("condition digits >= length(v) must hold")
+    } else {
+      v <- c(rep(0, digits - length(v)), v)
+    }
+  }
+  return(v)
+}
+
 #' Count State Space Reconstruction Points Relative To Forecast
 #'
 #' @param distances [matrix()] of allowed neighbour distances
@@ -22,6 +55,68 @@ count_ssr_points <- function (distances) {
   n_nbrs <- as.vector(apply(distances, 1, function (x) sum(!is.na(x))))
   # Return points counts
   c(0, n_nbrs)[seq_len(n_rows)]
+}
+
+#' Create Lags Of A Vector Or Matrix
+#'
+#' @param x [vector()] or column [matrix()] to lag
+#' @param n [integer()] lag sizes
+#'
+#' @return [vector()] or column [matrix()] of lagged values
+#'
+#' @author Luke A. Rogers
+#'
+#' @export
+#'
+#' @examples
+#' create_lags(1:10, 3)
+#' create_lags(matrix(rep(1:10, 2), nrow = 10), 3)
+#' create_lags(matrix(rep(1:10, 2), nrow = 10), c(3, 5))
+#'
+#' create_lags(matrix(rep(1:10, 2), nrow = 10), c(0, 1))
+#' create_lags(matrix(rep(1:10, 2), nrow = 10), c(0, 0))
+#' create_lags(matrix(rep(1:10, 2), nrow = 10), c(0, -1))
+#'
+create_lags <- function (x, n = 1L) {
+
+  # 0.0 Check arguments --------------------------------------------------------
+
+  stopifnot(
+    is.matrix(x) || is.numeric(x),
+    is.numeric(n))
+
+  # 1.0 Define m and n ---------------------------------------------------------
+
+  # Coerce to matrix
+  m <- as.matrix(x)
+
+  # Define lags
+  if (length(n) == 1) {
+    n <- rep(n, ncol(m))
+  }
+
+  # 2.0 Create lags of m -------------------------------------------------------
+
+  # Create positive or negative lags and buffer by NAs
+  for (i in seq_along(n)) {
+    if (n[i] >= 0) {
+      m[, i] <- c(rep(NA_real_, floor(n[i])), m[, i])[seq_along(m[, i])]
+    } else {
+      m[, i] <- c(m[, i], rep(NA_real_, floor(-n[i])))[seq_along(m[, i]) - n[i]]
+    }
+  }
+
+  # 3.0 Coerce m to vector or matrix -------------------------------------------
+
+  if (is.vector(x)) {
+    m <- as.vector(m)
+  } else if (is.matrix(x)) {
+    m <- as.matrix(m)
+  }
+
+  # 4.0 Return m ---------------------------------------------------------------
+
+  return(m)
 }
 
 #' Create Subset Lags
@@ -188,6 +283,128 @@ state_space_distances <- function (ssr, index) {
   return(distances)
 }
 
+
+#' State Space Forecasts
+#'
+#' @param ssr [matrix()] a state space reconstruction in which the rows
+#'   are points in the state space
+#' @param distances [matrix()] of allowed neighbour distances
+#' @param within_row [logical()] forecast response using explanatory values
+#'   from within the same row in \code{data}. This is appropriate if the
+#'   response is indexed by a generating event but occurs at a later time. For
+#'   example sockeye recruitment is indexed by brood year but typically occurs
+#'   over the subsequent 3-5 years, so \code{within_row = TRUE} is appropriate.
+#'   Note that this excludes the response from the state space reconstruction,
+#'   and consequently identifies nearest neighbours by explanatory variables
+#'   and their lags, but not by the resulting recruitment.
+#' @param observed [numeric()][vector()]
+#'
+#' @return [numeric()] [vector()] of forecast values
+#' @export
+#'
+#' @examples
+#' d <- data.frame(x = 1:30, y = 31:60)
+#' ssr <- state_space_reconstruction(
+#'   d,
+#'   response = "x",
+#'   lags = list(y = c(0, 1, 2, 3))
+#' )
+#' distances <- state_space_distances(ssr, 20:25)
+#' observed <- d$x
+#'
+#' # Should be the same unless response excluded from ssr
+#'
+#' state_space_forecasts(ssr, distances)
+#'
+#' state_space_forecasts(ssr, distances, TRUE, observed)
+#'
+state_space_forecasts <- function (ssr,
+                                   distances,
+                                   within_row = FALSE,
+                                   observed = NULL) {
+
+  # Check arguments ------------------------------------------------------------
+
+
+
+
+  # Create a neighbour index matrix --------------------------------------------
+
+  # - Row index is the focal point index
+  # - Column index is the nearest neighbour ranking
+  # - The number of columns is the embedding dimension + 1
+
+  # Define the number of neighbours
+  num_nbrs <- ncol(ssr) + 1
+  # Define the nearness sequence
+  seq_nbrs <- seq_len(num_nbrs)
+  # Define the nearest neighbour index matrix
+  nbr_inds <- t(apply(distances, 1, order))[, seq_nbrs, drop = FALSE]
+  # Replace indexes with too few neighbours by NA
+  nbr_inds[which(rowSums(!is.na(distances)) < num_nbrs), ] <- NA
+
+  # Create a neighbour response value matrix -----------------------------------
+
+  # - Row index is the focal point index
+  # - Column index is the nearest neighbour ranking
+  # - The value is the transformed response value at the correponding
+  #   neighbour index
+
+  # Apparently not used.
+
+  # if (within_row) {
+  #   # Compute transformed observed
+  #   mean_observed <- mean(observed, na.rm = TRUE)
+  #   sd_observed <- stats::sd(observed, na.rm = TRUE)
+  #   ssr_observed <- (observed - mean_observed) / sd_observed
+  #   # Neighbour response values from transformed observed vector
+  #   nbr_vals <- t(apply(nbr_inds, 1, function (x, y) y[x], y = ssr_observed))
+  # } else {
+  #   # Neighbour response values from response column of SSR
+  #   nbr_vals <- t(apply(nbr_inds, 1, function (x, y) y[x, 1], y = ssr))
+  # }
+
+  # Create neighbour distance and weights matrices -----------------------------
+
+  nbr_dist <- t(apply(distances, 1, sort, na.last = TRUE))[, seq_nbrs, drop = F]
+  nbr_wts <- t(apply(nbr_dist, 1, function (x) exp(-x / x[1])))
+
+  # Project neighbour indexes and weights --------------------------------------
+
+  # - Projected indexes: lag and increment each non-NA neighbour index by 1
+  # - Projected weights: lag the matrix of neighbour weights
+
+  proj_inds <- create_lags(nbr_inds, 1L) + 1L
+  proj_wts <- create_lags(nbr_wts, 1L)
+
+  # Project neighbour response values ------------------------------------------
+
+  # - Row index is the index of the projection of the focal point
+  # - Column index is the nearest neighbour ranking
+  # - The value is the transformed response value at the correponding
+  #   projected neighbour index
+
+  if (within_row) {
+    # Compute transformed observed
+    mean_observed <- mean(observed, na.rm = TRUE)
+    sd_observed <- stats::sd(observed, na.rm = TRUE)
+    ssr_observed <- (observed - mean_observed) / sd_observed
+    # Neighbour response values from transformed observed vector
+    proj_vals <- t(apply(proj_inds, 1, function (x, y) y[x], y = ssr_observed))
+  } else {
+    # Neighbour response values from response column of SSR
+    proj_vals <- t(apply(proj_inds, 1, function (x, y) y[x, 1], y = ssr))
+  }
+
+  # Compute SSR forecasts ------------------------------------------------------
+
+  ssr_forecasts <- as.vector(rowSums(proj_vals * proj_wts) / rowSums(proj_wts))
+
+  # Return SSR forecasts -------------------------------------------------------
+
+  return(ssr_forecasts)
+}
+
 #' Lag Superset Columns
 #'
 #' @param data [matrix()] or [data.frame()] with named [numeric()] columns
@@ -240,180 +457,9 @@ untransform_forecasts <- function (x, y) {
 
 
 
-#' Represent An Integer As A Binary Vector
-#'
-#' @param x [integer()] >= 0
-#' @param digits [integer()] length of the output vector
-#'
-#' @return [integer()] [vector()] binary representation of x
-#' @export
-#'
-#' @examples
-#' binary(10, digits = 8)
-#'
-#' for (i in 0:32) print(binary(i, digits = 6))
-#'
-binary <- function (x, digits = NULL) {
-  # Check arguments
-
-  # Compute binary vector
-  v <- c()
-  while (x > 0) {
-    r <- x %% 2
-    x <- x %/% 2
-    v <- c(r, v)
-  }
-  if (!is.null(digits)) {
-    if (digits < length(v)) {
-      stop("condition digits >= length(v) must hold")
-    } else {
-      v <- c(rep(0, digits - length(v)), v)
-    }
-  }
-  return(v)
-}
-
-#' Create Lags Of A Vector Or Matrix
-#'
-#' @param x [vector()] or column [matrix()] to lag
-#' @param n [integer()] lag sizes
-#'
-#' @return [vector()] or column [matrix()] of lagged values
-#'
-#' @author Luke A. Rogers
-#'
-#' @export
-#'
-#' @examples
-#' create_lags(1:10, 3)
-#' create_lags(matrix(rep(1:10, 2), nrow = 10), 3)
-#' create_lags(matrix(rep(1:10, 2), nrow = 10), c(3, 5))
-#'
-#' create_lags(matrix(rep(1:10, 2), nrow = 10), c(0, 1))
-#' create_lags(matrix(rep(1:10, 2), nrow = 10), c(0, 0))
-#' create_lags(matrix(rep(1:10, 2), nrow = 10), c(0, -1))
-#'
-create_lags <- function (x, n = 1L) {
-
-  # 0.0 Check arguments --------------------------------------------------------
-
-  stopifnot(
-    is.matrix(x) || is.numeric(x),
-    is.numeric(n))
-
-  # 1.0 Define m and n ---------------------------------------------------------
-
-  # Coerce to matrix
-  m <- as.matrix(x)
-
-  # Define lags
-  if (length(n) == 1) {
-    n <- rep(n, ncol(m))
-  }
-
-  # 2.0 Create lags of m -------------------------------------------------------
-
-  # Create positive or negative lags and buffer by NAs
-  for (i in seq_along(n)) {
-    if (n[i] >= 0) {
-      m[, i] <- c(rep(NA_real_, floor(n[i])), m[, i])[seq_along(m[, i])]
-    } else {
-      m[, i] <- c(m[, i], rep(NA_real_, floor(-n[i])))[seq_along(m[, i]) - n[i]]
-    }
-  }
-
-  # 3.0 Coerce m to vector or matrix -------------------------------------------
-
-  if (is.vector(x)) {
-    m <- as.vector(m)
-  } else if (is.matrix(x)) {
-    m <- as.matrix(m)
-  }
-
-  # 4.0 Return m ---------------------------------------------------------------
-
-  return(m)
-}
 
 
-#' State Space Forecasts
-#'
-#' @param ssr [matrix()] a state space reconstruction in which the rows
-#'   are points in the state space
-#' @param distances [matrix()] of allowed neighbour distances
-#' @param within_row [logical()] forecast response using explanatory values
-#'   from within the same row in \code{data}. This is appropriate if the
-#'   response is indexed by a generating event but occurs at a later time. For
-#'   example sockeye recruitment is indexed by brood year but typically occurs
-#'   over the subsequent 3-5 years, so \code{within_row = TRUE} is appropriate.
-#'   Note that this excludes the response from the state space reconstruction,
-#'   and consequently identifies nearest neighbours by explanatory variables
-#'   and their lags, but not by the resulting recruitment.
-#' @param observed [numeric()][vector()]
-#'
-#' @return [numeric()] [vector()] of forecast values
-#' @export
-#'
-state_space_forecasts <- function (ssr,
-                                   distances,
-                                   within_row = FALSE,
-                                   observed = NULL) {
 
-}
-
-
-# #' Empirical Dynamic Modeling Forecasts
-# #'
-# #' @param X [matrix()] a state space reconstruction in which the rows
-# #'   are points in the state space
-# #' @param distance [matrix()] of allowed neighbour distances
-# #' @param beyond [logical()]
-# #'
-# #' @author Luke A. Rogers
-# #'
-# #' @return [numeric()] [vector()] of forecast values
-# #' @export
-# #'
-# state_space_forecasts <- function (X, distance, beyond = FALSE) {
-#
-#   # Check arguments ------------------------------------------------------------
-#
-#
-#   # Create neighbour index matrix ----------------------------------------------
-#
-#   num_nbrs <- ncol(X) + 1
-#   seq_nbrs <- seq_len(num_nbrs)
-#   nbr_inds <- t(apply(distance, 1, order))[, seq_nbrs, drop = FALSE]
-#   nbr_inds[which(rowSums(!is.na(distance)) < num_nbrs), ] <- NA
-#   nbr_inds <- rbind(nbr_inds, array(NA, dim = c(1, num_nbrs)))
-#
-#   # Create neighbour matrices --------------------------------------------------
-#
-#   nbr_vals <- t(apply(nbr_inds, 1, function (x, y) y[x, 1], y = X))
-#   nbr_dist <- t(apply(distance, 1, sort, na.last = TRUE))[, seq_nbrs]
-#   nbr_wts <- t(apply(nbr_dist, 1, function (x) exp(-x / x[1])))
-#   nbr_wts <- rbind(nbr_wts, array(NA, dim = c(1, num_nbrs)))
-#
-#   # Project neighbour matrices -------------------------------------------------
-#
-#   proj_inds <- create_lags(nbr_inds, 1L) + 1L
-#   proj_vals <- t(apply(proj_inds, 1, function (x, y) y[x, 1], y = X))
-#   proj_wts <- create_lags(nbr_wts, 1L)
-#
-#   # Compute X_forecast ---------------------------------------------------------
-#
-#   X_forecast <- as.vector(rowSums(proj_vals * proj_wts) / rowSums(proj_wts))
-#
-#   # Forecast beyond ssr? -------------------------------------------------------
-#
-#   if (!beyond) {
-#     X_forecast <- X_forecast[seq_len(nrow(X))]
-#   }
-#
-#   # Return X_forecast ----------------------------------------------------------
-#
-#   return(X_forecast)
-# }
 
 
 #' Weight Single-View Embedding Outputs By Past Performance

@@ -29,3 +29,20 @@ and their lags, but not by the resulting recruitment.}
 \description{
 State Space Forecasts
 }
+\examples{
+d <- data.frame(x = 1:30, y = 31:60)
+ssr <- state_space_reconstruction(
+  d,
+  response = "x",
+  lags = list(y = c(0, 1, 2, 3))
+)
+distances <- state_space_distances(ssr, 20:25)
+observed <- d$x
+
+# Should be the same unless response excluded from ssr
+
+state_space_forecasts(ssr, distances)
+
+state_space_forecasts(ssr, distances, TRUE, observed)
+
+}
