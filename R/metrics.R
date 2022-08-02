@@ -39,7 +39,10 @@ mre <- function (x, y = NULL, running = FALSE) {
   # Running or total -----------------------------------------------------------
 
   if (running) {
+    # Compute value
     value <- runner::runner(x, f = mre, y = NULL, running = FALSE)
+    # Preserve NAs
+    value[which(is.na(rowSums(x)))] <- NA_real_
   } else {
     value <- mean((x[, 2] - x[, 1]), na.rm = TRUE)
   }
@@ -94,7 +97,10 @@ rmse <- function (x, y = NULL, running = FALSE) {
   # Running or total -----------------------------------------------------------
 
   if (running) {
+    # Compute value
     value <- runner::runner(x, f = rmse, y = NULL, running = FALSE)
+    # Preserve NAs
+    value[which(is.na(rowSums(x)))] <- NA_real_
   } else {
     value <- sqrt(mean((x[, 2] - x[, 1])^2, na.rm = TRUE))
   }
