@@ -1,0 +1,65 @@
+---
+title: "forecast"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{forecast}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(mve)
+```
+
+```{r arguments}
+if (FALSE) {
+  # Declare arguments for manual testing
+  data <- mve::chilko
+  index <- 41:66 # 61:68
+  response <- "recruits"
+  lags <- list(spawners = 0:8, flow = 0)
+  within_row <- TRUE
+  n_best <- ceiling(sqrt(2^length(unlist(lags))))
+  superset <- lags
+  cores <- 4
+}
+
+```
+
+```{r forecast}
+if (FALSE) {
+  # SVE
+  output <- mve::sve(
+    data = data,
+    index = index,
+    response = response,
+    lags = lags,
+    within_row = within_row,
+    superset = superset
+  )
+  # MVE
+  multi <- mve::mve(
+    data = data,
+    index = index,
+    response = response,
+    lags = lags,
+    within_row = within_row,
+    n_best = n_best,
+    cores = cores
+  )
+  # View
+  tibble::view(multi$forecasts)
+  tibble::view(multi$hindsight)
+  tibble::view(multi$results)
+  tibble::view(multi$summary)
+  
+}
+
+```

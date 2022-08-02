@@ -16,6 +16,8 @@
 #' @param n_best [integer()]
 #' @param cores [integer()]
 #'
+#' @importFrom rlang .data
+#'
 #' @author Luke A. Rogers
 #'
 #' @return [list()]
@@ -62,13 +64,87 @@ mve <- function (data,
     )
   }
 
-  # Average n best forecasts ---------------------------------------------------
+  # Bind rows ------------------------------------------------------------------
 
-  output <- weight_sve_outputs_by_past(outputs, n_best)
+  outputs <- dplyr::bind_rows(outputs, .id = "ssr") %>%
+    dplyr::mutate(ssr = as.numeric(.data$ssr)) %>%
+    dplyr::relocate(.data$ssr, .before = 1)
+
+  # Define results -------------------------------------------------------------
+
+  results <- outputs %>%
+    dplyr::arrange(.data$index, .data$rmse) %>%
+    dplyr::group_by(.data$index) %>%
+    dplyr::mutate(rank = dplyr::row_number()) %>%
+    dplyr::ungroup() %>%
+    dplyr::arrange(.data$ssr, .data$index) %>%
+    dplyr::group_by(.data$ssr) %>%
+    dplyr::mutate(lag_rank = dplyr::lag(.data$rank, n = 1L)) %>%
+    dplyr::ungroup()
+
+  # Define forecasts -----------------------------------------------------------
+
+  forecasts <- results %>%
+    dplyr::filter(.data$lag_rank <= n_best) %>%
+    dplyr::arrange(.data$index, .data$lag_rank) %>%
+    dplyr::group_by(.data$index) %>%
+    dplyr::mutate(mean = mean(.data$forecast, na.omit = TRUE)) %>%
+    dplyr::mutate(median = stats::median(.data$forecast, na.rm = TRUE)) %>%
+    dplyr::mutate(sd = stats::sd(.data$forecast, na.rm = TRUE)) %>%
+    dplyr::ungroup() %>%
+    dplyr::select(
+      .data$index,
+      .data$observed,
+      .data$mean,
+      .data$median,
+      .data$sd
+    ) %>%
+    dplyr::distinct() %>%
+    tibble::add_row(
+      index = 1,
+      observed = data[1, response, drop = TRUE],
+      .before = 1
+    )
+
+  # Define hindsight -----------------------------------------------------------
+
+  hindsight <- results %>%
+    dplyr::filter(.data$rank == 1) %>%
+    dplyr::arrange(.data$index) %>%
+    dplyr::select(-.data$rmse, -.data$mre)
+
+  # Define summary -------------------------------------------------------------
+
+  summary <- results %>%
+    tidyr::drop_na() %>%
+    dplyr::filter(.data$lag_rank <= n_best) %>%
+    dplyr::select(
+      -(.data$ssr:.data$mre),
+      -(.data$rank:.data$lag_rank)
+    ) %>%
+    dplyr::summarise(dplyr::across(.fns = sum)) %>%
+    tibble::as_tibble() %>%
+    tidyr::pivot_longer(
+      cols = tidyselect::everything(),
+      names_to = "lag",
+      values_to = "count"
+    ) %>%
+    dplyr::mutate(total = n_best * length(index)) %>%
+    dplyr::mutate(pct = .data$count / .data$total)
 
   # Return output --------------------------------------------------------------
 
-  return(output)
+  return(
+    structure(
+      list(
+        forecasts = forecasts,
+        hindsight = hindsight,
+        results = results,
+        summary = summary
+      ),
+      class = "mve"
+    )
+  )
 }
 
 #' Single-View Embedding (SVE)
