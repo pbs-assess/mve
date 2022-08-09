@@ -11,6 +11,8 @@ mve(
   lags,
   within_row = FALSE,
   n_best = ceiling(sqrt(2^length(unlist(lags)))),
+  id_cols = NULL,
+  id_vals = NULL,
   cores = 1L
 )
 }
@@ -34,6 +36,10 @@ and consequently identifies nearest neighbours by explanatory variables
 and their lags, but not by the resulting recruitment.}
 
 \item{n_best}{\code{\link[=integer]{integer()}}}
+
+\item{id_cols}{\code{\link[=character]{character()}} colnames in \code{data}}
+
+\item{id_vals}{\code{\link[=list]{list()}} of name-value pairs}
 
 \item{cores}{\code{\link[=integer]{integer()}}}
 }

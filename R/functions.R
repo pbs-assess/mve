@@ -14,6 +14,8 @@
 #'   and consequently identifies nearest neighbours by explanatory variables
 #'   and their lags, but not by the resulting recruitment.
 #' @param n_best [integer()]
+#' @param id_cols [character()] colnames in \code{data}
+#' @param id_vals [list()] of name-value pairs
 #' @param cores [integer()]
 #'
 #' @importFrom rlang .data
@@ -29,11 +31,27 @@ mve <- function (data,
                  lags,
                  within_row = FALSE,
                  n_best = ceiling(sqrt(2^length(unlist(lags)))),
+                 id_cols = NULL,
+                 id_vals = NULL,
                  cores = 1L) {
 
   # Check arguments ------------------------------------------------------------
 
 
+  # Define id columns and values -----------------------------------------------
+
+  # Define id columns
+  if (length(id_cols) > 0) {
+    id_columns <- data[1L, id_cols]
+  } else {
+    id_columns <- NULL
+  }
+  # Define id values
+  if (length(id_vals) > 0) {
+    id_values <- tibble::as_tibble(id_vals)
+  } else {
+    id_values <- NULL
+  }
 
   # Create subset lags ---------------------------------------------------------
 
@@ -104,14 +122,22 @@ mve <- function (data,
       index = 1,
       observed = data[1, response, drop = TRUE],
       .before = 1
-    )
+    ) %>%
+    dplyr::bind_cols(id_values) %>%
+    dplyr::relocate(colnames(id_values), .before = 1) %>%
+    dplyr::bind_cols(id_columns) %>%
+    dplyr::relocate(colnames(id_columns), .before = 1)
 
   # Define hindsight -----------------------------------------------------------
 
   hindsight <- results %>%
     dplyr::filter(.data$rank == 1) %>%
     dplyr::arrange(.data$index) %>%
-    dplyr::select(-.data$rmse, -.data$mre)
+    dplyr::select(-.data$rmse, -.data$mre) %>%
+    dplyr::bind_cols(id_values) %>%
+    dplyr::relocate(colnames(id_values), .before = 1) %>%
+    dplyr::bind_cols(id_columns) %>%
+    dplyr::relocate(colnames(id_columns), .before = 1)
 
   # Define summary -------------------------------------------------------------
 
@@ -130,7 +156,11 @@ mve <- function (data,
       values_to = "count"
     ) %>%
     dplyr::mutate(total = n_best * length(index)) %>%
-    dplyr::mutate(pct = .data$count / .data$total)
+    dplyr::mutate(pct = .data$count / .data$total) %>%
+    dplyr::bind_cols(id_values) %>%
+    dplyr::relocate(colnames(id_values), .before = 1) %>%
+    dplyr::bind_cols(id_columns) %>%
+    dplyr::relocate(colnames(id_columns), .before = 1)
 
   # Return output --------------------------------------------------------------
 
