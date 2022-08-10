@@ -4,7 +4,16 @@
 \alias{edm}
 \title{Empirical Dynamic Modelling (EDM)}
 \usage{
-edm(data, index, response, lags, within_row = FALSE, cores = 1L)
+edm(
+  data,
+  index,
+  response,
+  lags,
+  within_row = FALSE,
+  id_cols = NULL,
+  id_vals = NULL,
+  cores = 1L
+)
 }
 \arguments{
 \item{data}{\code{\link[=data.frame]{data.frame()}}}
@@ -24,6 +33,10 @@ over the subsequent 3-5 years, so \code{within_row = TRUE} is appropriate.
 Note that this excludes the response from the state space reconstruction,
 and consequently identifies nearest neighbours by explanatory variables
 and their lags, but not by the resulting recruitment.}
+
+\item{id_cols}{\code{\link[=character]{character()}} colnames in \code{data}}
+
+\item{id_vals}{\code{\link[=list]{list()}} of name-value pairs}
 
 \item{cores}{\code{\link[=integer]{integer()}}}
 }

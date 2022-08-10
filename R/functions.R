@@ -41,16 +41,14 @@ mve <- function (data,
   # Define id columns and values -----------------------------------------------
 
   # Define id columns
+  id_columns <- NULL
   if (length(id_cols) > 0) {
     id_columns <- data[1L, id_cols]
-  } else {
-    id_columns <- NULL
   }
   # Define id values
+  id_values <- NULL
   if (length(id_vals) > 0) {
     id_values <- tibble::as_tibble(id_vals)
-  } else {
-    id_values <- NULL
   }
 
   # Create subset lags ---------------------------------------------------------
@@ -317,6 +315,8 @@ sve <- function (data,
 #'   Note that this excludes the response from the state space reconstruction,
 #'   and consequently identifies nearest neighbours by explanatory variables
 #'   and their lags, but not by the resulting recruitment.
+#' @param id_cols [character()] colnames in \code{data}
+#' @param id_vals [list()] of name-value pairs
 #' @param cores [integer()]
 #'
 #' @author Luke A. Rogers
@@ -329,6 +329,8 @@ edm <- function (data,
                  response,
                  lags,
                  within_row = FALSE,
+                 id_cols = NULL,
+                 id_vals = NULL,
                  cores = 1L) {
 
   # Return forecasts -----------------------------------------------------------
@@ -339,5 +341,7 @@ edm <- function (data,
            lags = lags,
            within_row = within_row,
            n_best = 1L,
+           id_cols = id_cols,
+           id_vals = id_vals,
            cores = cores)
 }

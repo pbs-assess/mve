@@ -46,6 +46,17 @@ if (FALSE) {
     within_row = within_row,
     superset = superset
   )
+  # EDM
+  best <- mve::edm(
+    data = data,
+    index = index,
+    response = response,
+    lags = lags,
+    within_row = within_row,
+    id_cols = id_cols,
+    id_vals = id_vals,
+    cores = cores
+  )  
   # MVE
   multi <- mve::mve(
     data = data,
