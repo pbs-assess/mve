@@ -83,13 +83,9 @@ mve <- function (data,
   # Bind rows ------------------------------------------------------------------
 
   outputs <- outputs %>%
-    dplyr::bind_rows(.id = "ssr")
-
-  print(utils::head(outputs))
-
-  # %>%
-  #   dplyr::mutate(ssr = as.numeric(.data$ssr)) %>%
-  #   dplyr::relocate(.data$ssr, .before = 1)
+    dplyr::bind_rows(.id = "ssr") %>%
+    dplyr::mutate(ssr = as.numeric(.data$ssr)) %>%
+    dplyr::relocate(.data$ssr, .before = 1)
 
   # Define results -------------------------------------------------------------
 
