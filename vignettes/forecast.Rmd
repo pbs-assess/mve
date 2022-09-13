@@ -27,7 +27,7 @@ if (FALSE) {
   lags <- list(spawners = 0:8, flow = 0)
   within_row <- TRUE
   n_best <- ceiling(sqrt(2^length(unlist(lags))))
-  id_cols <- c("stock_id", "stock_name") # NULL
+  id_cols <- c("stock_id", "stock_name", "brood_year") # NULL
   id_vals <- list(method = "mve")
   superset <- lags
   cores <- 4

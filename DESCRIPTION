@@ -1,6 +1,6 @@
 Package: mve
 Title: Forecast From Multi-View Embedding (MVE) And Empirical Dynamic Modelling (EDM) Methods
-Version: 0.0.2
+Version: 0.0.3
 Authors@R: 
     c(person(given = c("Luke", "A."),
              family = "Rogers",

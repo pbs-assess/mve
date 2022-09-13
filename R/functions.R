@@ -43,7 +43,7 @@ mve <- function (data,
   # Define id columns
   id_columns <- NULL
   if (length(id_cols) > 0) {
-    id_columns <- data[1L, id_cols]
+    id_columns <- data[, id_cols]
   }
   # Define id values
   id_values <- NULL
@@ -123,7 +123,7 @@ mve <- function (data,
       .before = 1
     ) %>%
     dplyr::bind_cols(id_values) %>%
-    dplyr::relocate(colnames(id_values), .before = 1) %>%
+    dplyr::relocate(colnames(id_values), .before = 1)%>%
     dplyr::bind_cols(id_columns) %>%
     dplyr::relocate(colnames(id_columns), .before = 1)
 
@@ -157,9 +157,10 @@ mve <- function (data,
     dplyr::mutate(total = n_best * length(index)) %>%
     dplyr::mutate(pct = .data$count / .data$total) %>%
     dplyr::bind_cols(id_values) %>%
-    dplyr::relocate(colnames(id_values), .before = 1) %>%
-    dplyr::bind_cols(id_columns) %>%
-    dplyr::relocate(colnames(id_columns), .before = 1)
+    dplyr::relocate(colnames(id_values), .before = 1)
+  # %>%
+  #   dplyr::bind_cols(id_columns) %>%
+  #   dplyr::relocate(colnames(id_columns), .before = 1)
 
   # Return output --------------------------------------------------------------
 
