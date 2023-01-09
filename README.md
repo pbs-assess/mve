@@ -11,5 +11,5 @@ public.](https://www.repostatus.org/badges/latest/wip.svg)](https://www.repostat
 ## Installation
 
 ``` r
-remotes::install_github("luke-a-rogers/mve")
+remotes::install_github("pbs-assess/mve")
 ```
