@@ -32,7 +32,7 @@ mre <- function (x, y = NULL, running = FALSE) {
     if (length(x) == length(y)) {
       x <- matrix(c(x, y), ncol = 2L)
     } else {
-      stop("rmse: length(x) must equal length(y")
+      stop("rmse: length(x) must equal length(y)")
     }
   }
 
@@ -49,7 +49,7 @@ mre <- function (x, y = NULL, running = FALSE) {
 
   # Replace NaN by NA ----------------------------------------------------------
 
-  value <- dplyr::na_if(value, "NaN")
+  value <- dplyr::na_if(value, NaN)
 
   # Return value ---------------------------------------------------------------
 
@@ -107,7 +107,7 @@ rmse <- function (x, y = NULL, running = FALSE) {
 
   # Replace NaN by NA ----------------------------------------------------------
 
-  value <- dplyr::na_if(value, "NaN")
+  value <- dplyr::na_if(value, NaN)
 
   # Return value ---------------------------------------------------------------
 
